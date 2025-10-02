@@ -2,8 +2,7 @@ import asyncio
 import sys
 import signal
 from api.recommendation_server import RecommendationAPI
-from models.persistent_cached_hybrid_recommender import PersistentCachedHybridRecommender
-from shell.user_shell import RecommendationShell
+from data.sample_papers import SAMPLE_PAPERS, SAMPLE_INTERACTIONS, USER_INTERESTS
 
 class RecommendationSystem:
     def __init__(self):
@@ -11,53 +10,46 @@ class RecommendationSystem:
         self.running = False
     
     async def start_system(self):
-        interactions = [
-            {"user_id": "alice", "item_id": "iphone", "rating": 5},
-            {"user_id": "alice", "item_id": "macbook", "rating": 4},
-            {"user_id": "alice", "item_id": "coffee_maker", "rating": 3},
-            
-            {"user_id": "bob", "item_id": "iphone", "rating": 5},
-            {"user_id": "bob", "item_id": "macbook", "rating": 4},
-            {"user_id": "bob", "item_id": "gaming_chair", "rating": 5},
-            
-            {"user_id": "carol", "item_id": "coffee_maker", "rating": 4},
-            {"user_id": "carol", "item_id": "kitchen_knife", "rating": 5},
-            {"user_id": "carol", "item_id": "cookbook", "rating": 4},
-        ]
-        
-        items_data = [
-            {"item_id": "iphone", "category": "electronics", "brand": "apple", "description": "smartphone mobile phone"},
-            {"item_id": "macbook", "category": "electronics", "brand": "apple", "description": "laptop computer"},
-            {"item_id": "gaming_chair", "category": "furniture", "brand": "dxracer", "description": "chair gaming seat"},
-            {"item_id": "coffee_maker", "category": "kitchen", "brand": "cuisinart", "description": "coffee machine brewing"},
-            {"item_id": "kitchen_knife", "category": "kitchen", "brand": "henckels", "description": "knife cutting cooking"},
-            {"item_id": "cookbook", "category": "books", "brand": "penguin", "description": "recipes cooking food"},
-            {"item_id": "airpods", "category": "electronics", "brand": "apple", "description": "headphones wireless music"},
-            {"item_id": "ipad", "category": "electronics", "brand": "apple", "description": "tablet computer touch"},
-        ]
-        
-        print("Starting Real-time Recommendation Engine with Persistent Storage...")
+        print("Starting Paper Recommendation Engine...")
         print("=" * 60)
         
         self.api = RecommendationAPI(port=8000)
         
-        # Replace the old recommender with the persistent one
-        self.api.recommender = PersistentCachedHybridRecommender()
-        await self.api.recommender.initialize(interactions, items_data)
+        # Initialize with sample papers and interactions
+        await self.api.initialize(interactions=SAMPLE_INTERACTIONS, papers_data=SAMPLE_PAPERS)
+        
+        # Set user interests for cold start
+        for user_id, interests in USER_INTERESTS.items():
+            await self.api.recommender.db.create_or_update_user(user_id)
+            await self.api.recommender.db.set_user_initial_interests(user_id, interests)
         
         await self.api.start()
         
         self.running = True
         
-        print("Server started successfully with persistent storage!")
+        print("Server started successfully!")
         print("Database: recommendation_engine.db")
         print("API: http://localhost:8000")
         print("=" * 60)
+        print("\nAvailable endpoints:")
+        print("  GET  /health - Health check")
+        print("  GET  /feed/{user_id} - Get personalized paper feed")
+        print("  POST /interactions - Record user interaction")
+        print("  GET  /similar/{paper_id} - Get similar papers")
+        print("  GET  /popular - Get popular papers")
+        print("  GET  /category/{category} - Get papers by category")
+        print("  POST /users/{user_id}/interests - Set user interests")
+        print("  GET  /users/{user_id}/interests - Get user interests")
+        print("  GET  /stats - System statistics")
+        print("\nPress Ctrl+C to stop")
+        print("=" * 60)
         
-        await asyncio.sleep(1)
-        
-        shell = RecommendationShell()
-        await shell.start()
+        # Keep running
+        try:
+            while self.running:
+                await asyncio.sleep(1)
+        except KeyboardInterrupt:
+            pass
     
     async def stop_system(self):
         print("\nShutting down recommendation system...")
@@ -77,34 +69,36 @@ async def run_system():
         await system.stop_system()
 
 def show_menu():
-    print("Real-time Recommendation Engine with Persistent Storage")
+    print("Paper Recommendation Engine")
     print("=" * 55)
-    print("NEW: Data now persists between sessions!")
-    print()
     print("Choose an option:")
-    print("1. Start system (server + shell)")
+    print("1. Start API server")
     print("2. Help")
     print("3. Exit")
     print("=" * 55)
 
 async def show_help():
-    print("\nHelp - Real-time Recommendation Engine")
+    print("\nHelp - Paper Recommendation Engine")
     print("=" * 50)
-    print("WHAT'S NEW:")
-    print("  - All user data and ratings are now saved permanently")
-    print("  - System remembers users between restarts")
-    print("  - Database file: recommendation_engine.db")
-    print()
     print("FEATURES:")
-    print("  - Personalized recommendations using ML")
+    print("  - Semantic paper recommendations using SPECTER embeddings")
+    print("  - Category-aware filtering for subfield relevance")
+    print("  - Cold-start support with interest-based matching")
     print("  - Real-time learning from user interactions")
     print("  - Sub-100ms response times with caching")
-    print("  - Persistent storage with SQLite database")
     print()
-    print("DEMO USERS:")
-    print("  - alice: Likes Apple products and technology")
-    print("  - bob: Likes technology and gaming equipment")  
-    print("  - carol: Likes cooking and kitchen items")
+    print("SAMPLE USERS:")
+    print("  - researcher_alice: NLP/Transformers")
+    print("  - researcher_bob: Computer Vision")  
+    print("  - researcher_carol: Robotics/RL")
+    print("  - researcher_dave: Quantum Computing")
+    print("  - researcher_eve: Generative Models")
+    print("  - researcher_frank: Meta-Learning")
+    print()
+    print("EXAMPLE API CALLS:")
+    print("  curl http://localhost:8000/feed/researcher_alice")
+    print("  curl http://localhost:8000/popular?category=cs.CV")
+    print("  curl http://localhost:8000/similar/arxiv_2301_001")
 
 async def main():
     while True:

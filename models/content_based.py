@@ -119,7 +119,7 @@ class ContentBasedFilter:
                     recommendations.append((paper_id, similarities[i]))
         
         recommendations.sort(key=lambda x: x[1], reverse=True)
-        return recommendations[:num_recommendations]
+        return [(paper_id, float(score)) for paper_id, score in recommendations[:num_recommendations]]
     
     def _build_user_profile(self, interactions: List[Dict]):
         """Build user profile from their interaction history with implicit feedback weighting"""
@@ -196,7 +196,7 @@ class ContentBasedFilter:
                 similar_papers.append((self.papers[i], similarity))
         
         similar_papers.sort(key=lambda x: x[1], reverse=True)
-        return similar_papers[:num_similar]
+        return [(paper_id, float(score)) for paper_id, score in similar_papers[:num_similar]]
     
     def get_papers_by_interest(self, interests: List[str], num_papers: int = 10, 
                           use_category_filter: bool = True) -> List[Tuple[str, float]]:
@@ -250,7 +250,7 @@ class ContentBasedFilter:
             paper_scores = [(self.papers[i], similarities[i]) for i in range(len(self.papers))]
         
         paper_scores.sort(key=lambda x: x[1], reverse=True)
-        return paper_scores[:num_papers]
+        return [(paper_id, float(score)) for paper_id, score in paper_scores[:num_papers]]
     
     def _get_popular_papers(self, num_papers: int) -> List[Tuple[str, float]]:
         """Fallback: return popular papers based on citation count"""
